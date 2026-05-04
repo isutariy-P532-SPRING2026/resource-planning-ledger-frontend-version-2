@@ -1,10 +1,13 @@
 # Resource Planning Ledger — Frontend
 
-**Live App:** https://resource-planning-ledger-frontend.onrender.com
+**Live API:** https://resource-planning-ledger-backend-version-w90h.onrender.com/
 
-**Backend API:** https://resource-planning-ledger-backend-version-5jku.onrender.com
+**Frontend:** https://resource-planning-ledger-frontend-qyhq.onrender.com/
 
-**GitHub:** [isutariy-P532-SPRING2026/resource-planning-ledger-frontend-version-1](https://github.com/isutariy-P532-SPRING2026/resource-planning-ledger-frontend-version-1)
+**GitHub backend:** [isutariy-P532-SPRING2026/resource-planning-ledger-backend-version-2](https://github.com/isutariy-P532-SPRING2026/resource-planning-ledger-backend-version-2)
+
+**GitHub frontend:** [isutariy-P532-SPRING2026/resource-planning-ledger-frontend-version-2](https://github.com/isutariy-P532-SPRING2026/resource-planning-ledger-frontend-version-2)
+
 
 React + Vite single-page application for the Resource Planning Ledger system.
 
