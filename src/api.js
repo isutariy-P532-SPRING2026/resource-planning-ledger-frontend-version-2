@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_BASE = 'https://resource-planning-ledger-backend-version-5jku.onrender.com';
+const API_BASE = 'https://resource-planning-ledger-backend-version-w90h.onrender.com/';
 
 const api = axios.create({
   baseURL: import.meta.env.VITE_API_URL || `${API_BASE}/api`
