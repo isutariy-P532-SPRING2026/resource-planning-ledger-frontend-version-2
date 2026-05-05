@@ -86,22 +86,38 @@ function MetricsModal({ planId, onClose }) {
         </div>
         {loading ? <Spinner /> : !data ? <p className="muted">No data.</p> : (
           <div>
-            <p><strong>Total plans:</strong> {data.totalPlans}</p>
-            <p><strong>Total actions:</strong> {data.totalActions}</p>
-            <h3 style={{ marginTop: 12, marginBottom: 6 }}>Actions by status</h3>
-            {Object.keys(data.actionsByStatus).length === 0
-              ? <p className="muted">No actions.</p>
-              : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <p style={{ marginBottom: 8 }}>
+              <strong>Completion:</strong>{' '}
+              {data.completion.completedActions} / {data.completion.totalActions} actions completed
+              {data.completion.totalActions > 0 && (
+                <span className="muted"> ({Math.round(data.completion.completionRatio * 100)}%)</span>
+              )}
+            </p>
+            <div style={{ marginBottom: 8 }}>
+              <strong>Resources allocated:</strong>
+              {Object.keys(data.resourceCost.totalByResource).length === 0 ? (
+                <span className="muted" style={{ marginLeft: 6 }}>none</span>
+              ) : (
+                <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 6 }}>
                   <tbody>
-                    {Object.entries(data.actionsByStatus).map(([status, count]) => (
-                      <tr key={status}>
-                        <td style={{ padding: '4px 8px' }}><StatusBadge status={status} /></td>
-                        <td style={{ padding: '4px 8px', textAlign: 'right' }}>{count}</td>
+                    {Object.entries(data.resourceCost.totalByResource).map(([res, qty]) => (
+                      <tr key={res}>
+                        <td style={{ padding: '3px 8px', color: 'var(--muted)' }}>{res}</td>
+                        <td style={{ padding: '3px 8px', textAlign: 'right', fontWeight: 500 }}>{Number(qty)}</td>
                       </tr>
                     ))}
                   </tbody>
                 </table>
-            }
+              )}
+            </div>
+            <p style={{ margin: 0 }}>
+              <strong>Risk:</strong>{' '}
+              <span className={`badge badge-risk-${data.risk.riskLevel}`}>{data.risk.riskLevel}</span>
+              {' '}score {data.risk.riskScore}
+              {(data.risk.suspendedActions > 0 || data.risk.abandonedActions > 0) && (
+                <span className="muted"> ({data.risk.suspendedActions} suspended, {data.risk.abandonedActions} abandoned)</span>
+              )}
+            </p>
           </div>
         )}
       </div>
