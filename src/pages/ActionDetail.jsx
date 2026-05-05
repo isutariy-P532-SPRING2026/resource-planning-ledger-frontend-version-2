@@ -168,7 +168,7 @@ function AddAllocationModal({ actionId, onClose, onAdded }) {
 
 /* ── Button style map ────────────────────────────────────────────────────────── */
 const BTN_CLS = {
-  'submit-for-approval': 'btn-submit-approval',
+  submitForApproval: 'btn-submit-approval',
   approve:  'btn-approve',
   reject:   'btn-reject',
   reopen:   'btn-reopen',
@@ -178,7 +178,7 @@ const BTN_CLS = {
   abandon:  'btn-abandon',
 };
 const BTN_LABEL = {
-  'submit-for-approval': '→ Submit for Approval',
+  submitForApproval: '→ Submit for Approval',
   approve:  '✓ Approve',
   reject:   '✕ Reject',
   reopen:   '↩ Reopen',
@@ -216,15 +216,25 @@ export default function ActionDetail() {
     } catch (e) { toast(err(e), 'error'); }
   }
 
+  // Approval endpoints return a minimal {id,name,status} map, not a full action.
+  // Reload the full action after success so legalTransitions and allocations stay intact.
+  async function fireAndReload(callFn, successMsg) {
+    try {
+      await callFn();
+      toast(successMsg, 'success');
+      reload();
+    } catch (e) { toast(err(e), 'error'); }
+  }
+
   function handleTransition(event) {
-    if (event === 'suspend')             return setModal('suspend');
-    if (event === 'abandon')             return setModal('abandon');
-    if (event === 'complete')            return fireSimple(() => completeAction(id),    'Action completed');
-    if (event === 'resume')              return fireSimple(() => resumeAction(id),      'Action resumed');
-    if (event === 'submit-for-approval') return fireSimple(() => submitForApproval(id), 'Submitted for approval');
-    if (event === 'approve')             return fireSimple(() => approveAction(id),     'Action approved');
-    if (event === 'reject')              return fireSimple(() => rejectAction(id),      'Action rejected');
-    if (event === 'reopen')              return fireSimple(() => reopenAction(id),      'Action reopened');
+    if (event === 'suspend')           return setModal('suspend');
+    if (event === 'abandon')           return setModal('abandon');
+    if (event === 'complete')          return fireSimple(() => completeAction(id),    'Action completed');
+    if (event === 'resume')            return fireSimple(() => resumeAction(id),      'Action resumed');
+    if (event === 'submitForApproval') return fireAndReload(() => submitForApproval(id), 'Submitted for approval');
+    if (event === 'approve')           return fireAndReload(() => approveAction(id),     'Action approved');
+    if (event === 'reject')            return fireAndReload(() => rejectAction(id),      'Action rejected');
+    if (event === 'reopen')            return fireAndReload(() => reopenAction(id),      'Action reopened');
   }
 
   if (loading) return <Spinner />;
