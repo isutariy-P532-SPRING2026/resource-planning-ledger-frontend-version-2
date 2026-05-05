@@ -11,13 +11,16 @@ export default function ReportPage() {
   const [rows,    setRows]    = useState([]);
   const [loading, setLoading] = useState(true);
   const [error,   setError]   = useState(null);
+  const [status,  setStatus]  = useState('');
 
   useEffect(() => {
-    getPlanReport(id)
+    setLoading(true);
+    setError(null);
+    getPlanReport(id, status || undefined)
       .then(setRows)
       .catch(setError)
       .finally(() => setLoading(false));
-  }, [id]);
+  }, [id, status]);
 
   if (loading) return <Spinner />;
 
@@ -26,6 +29,20 @@ export default function ReportPage() {
       <div className="flex items-center gap-12" style={{ marginBottom: 18 }}>
         <button className="btn btn-ghost btn-sm" onClick={() => navigate(`/plans/${id}`)}>← Plan</button>
         <h1 style={{ marginBottom: 0 }}>Depth-First Report</h1>
+        <select
+          value={status}
+          onChange={e => setStatus(e.target.value)}
+          style={{ marginLeft: 'auto', fontSize: 13 }}
+        >
+          <option value="">All</option>
+          <option value="PROPOSED">PROPOSED</option>
+          <option value="PENDING_APPROVAL">PENDING_APPROVAL</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="SUSPENDED">SUSPENDED</option>
+          <option value="COMPLETED">COMPLETED</option>
+          <option value="REOPENED">REOPENED</option>
+          <option value="ABANDONED">ABANDONED</option>
+        </select>
       </div>
 
       <ErrorBox error={error} />

@@ -1,10 +1,23 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getPlan, addChildNode, getPlanReport } from '../api.js';
+import { getPlan, addChildNode, getPlanReport, getPlanMetrics } from '../api.js';
 import { useToast } from '../context/ToastContext.jsx';
 import Spinner     from '../components/Spinner.jsx';
 import StatusBadge from '../components/StatusBadge.jsx';
 import PlanTree    from '../components/PlanTree.jsx';
+
+function pruneToDepth(node, depth) {
+  if (!node) return node;
+  const hasChildren = (node.children?.length ?? 0) > 0;
+  if (depth <= 1) {
+    return { ...node, children: [], _pruned: node.type === 'PLAN' && hasChildren };
+  }
+  return {
+    ...node,
+    _pruned: false,
+    children: (node.children ?? []).map(child => pruneToDepth(child, depth - 1)),
+  };
+}
 
 function ReportModal({ planId, onClose }) {
   const [rows,    setRows]    = useState([]);
@@ -52,15 +65,67 @@ function ReportModal({ planId, onClose }) {
   );
 }
 
+function MetricsModal({ planId, onClose }) {
+  const [data,    setData]    = useState(null);
+  const [loading, setLoading] = useState(true);
+  const toast = useToast();
+
+  useEffect(() => {
+    getPlanMetrics(planId)
+      .then(setData)
+      .catch(e => toast(e?.response?.data?.message || e.message, 'error'))
+      .finally(() => setLoading(false));
+  }, [planId]);
+
+  return (
+    <div className="modal-overlay" onClick={onClose}>
+      <div className="modal" style={{ maxWidth: 460 }} onClick={e => e.stopPropagation()}>
+        <div className="flex items-center justify-between" style={{ marginBottom: 12 }}>
+          <h2 style={{ marginBottom: 0 }}>Plan Metrics</h2>
+          <button className="btn btn-ghost btn-sm" onClick={onClose}>Close ×</button>
+        </div>
+        {loading ? <Spinner /> : !data ? <p className="muted">No data.</p> : (
+          <div>
+            <p><strong>Total plans:</strong> {data.totalPlans}</p>
+            <p><strong>Total actions:</strong> {data.totalActions}</p>
+            <h3 style={{ marginTop: 12, marginBottom: 6 }}>Actions by status</h3>
+            {Object.keys(data.actionsByStatus).length === 0
+              ? <p className="muted">No actions.</p>
+              : <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <tbody>
+                    {Object.entries(data.actionsByStatus).map(([status, count]) => (
+                      <tr key={status}>
+                        <td style={{ padding: '4px 8px' }}><StatusBadge status={status} /></td>
+                        <td style={{ padding: '4px 8px', textAlign: 'right' }}>{count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+            }
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 export default function PlanDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const toast    = useToast();
 
-  const [plan,      setPlan]      = useState(null);
-  const [loading,   setLoading]   = useState(true);
-  const [selected,  setSelected]  = useState(null);
-  const [showReport, setShowReport] = useState(false);
+  const fullTreeRef = useRef(null);
+
+  const [plan,        setPlan]        = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [depth,       setDepth]       = useState(10);
+  const [selected,    setSelected]    = useState(null);
+  const [showReport,  setShowReport]  = useState(false);
+  const [showMetrics, setShowMetrics] = useState(false);
+
+  const [nodeMetrics,        setNodeMetrics]        = useState(null);
+  const [nodeMetricsLoading, setNodeMetricsLoading] = useState(false);
+  const [nodeMetricsError,   setNodeMetricsError]   = useState('');
 
   // Add child form
   const [childName, setChildName] = useState('');
@@ -71,12 +136,31 @@ export default function PlanDetail() {
   function load() {
     setLoading(true);
     getPlan(id)
-      .then(setPlan)
+      .then(data => {
+        fullTreeRef.current = data;
+        setPlan(pruneToDepth(data, depth));
+      })
       .catch(e => toast(e?.response?.data?.message || e.message, 'error'))
       .finally(() => setLoading(false));
   }
 
+  function handleDepthChange(newDepth) {
+    setDepth(newDepth);
+    if (fullTreeRef.current) setPlan(pruneToDepth(fullTreeRef.current, newDepth));
+  }
+
   useEffect(() => { load(); }, [id]);
+
+  useEffect(() => {
+    setNodeMetrics(null);
+    setNodeMetricsError('');
+    if (!selected || selected.type !== 'PLAN') return;
+    setNodeMetricsLoading(true);
+    getPlanMetrics(selected.id)
+      .then(setNodeMetrics)
+      .catch(e => setNodeMetricsError(e?.response?.data?.message || e.message))
+      .finally(() => setNodeMetricsLoading(false));
+  }, [selected?.id]);
 
   const targetId   = selected?.type === 'PLAN' ? selected.id : (plan?.id ?? null);
   const targetName = selected?.type === 'PLAN' ? selected.name : plan?.name;
@@ -107,19 +191,31 @@ export default function PlanDetail() {
         <button className="btn btn-ghost btn-sm" onClick={() => navigate('/plans')}>← Plans</button>
         <h1 style={{ marginBottom: 0 }}>{plan.name}</h1>
         <StatusBadge status={plan.status} />
-        <button className="btn btn-ghost btn-sm" style={{ marginLeft: 'auto' }}
-          onClick={() => setShowReport(true)}>
-          📄 View Report
-        </button>
+        <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowMetrics(true)}>
+            📊 Metrics
+          </button>
+          <button className="btn btn-ghost btn-sm" onClick={() => setShowReport(true)}>
+            📄 View Report
+          </button>
+        </div>
       </div>
 
       <div className="grid-2">
         {/* Tree */}
         <div className="card">
-          <h2>Plan Tree</h2>
-          <p className="muted" style={{ marginBottom: 12, fontSize: 12 }}>
+          <div className="flex items-center justify-between" style={{ marginBottom: 8 }}>
+            <h2 style={{ marginBottom: 0 }}>Plan Tree</h2>
+            <span style={{ fontSize: 13, color: 'var(--muted)', fontWeight: 600 }}>Depth: {depth}</span>
+          </div>
+          <p className="muted" style={{ marginBottom: 8, fontSize: 12 }}>
             Click a node to select it. Action nodes open their detail page.
           </p>
+          <input
+            type="range" min={1} max={10} value={depth}
+            onChange={e => handleDepthChange(Number(e.target.value))}
+            style={{ width: '100%', marginBottom: 12 }}
+          />
           <PlanTree plan={plan} selectedId={selected?.id} onSelect={setSelected} />
         </div>
 
@@ -158,6 +254,55 @@ export default function PlanDetail() {
               )}
             </div>
           )}
+
+          {/* Node metrics panel */}
+          <div className="card" style={{ marginBottom: 16 }}>
+            <h3 style={{ marginBottom: 8 }}>Node Metrics</h3>
+            {!selected ? (
+              <p className="muted" style={{ fontSize: 13 }}>Select a node to view metrics.</p>
+            ) : selected.type !== 'PLAN' ? (
+              <p className="muted" style={{ fontSize: 13 }}>Metrics are computed per plan subtree — select a plan node.</p>
+            ) : nodeMetricsLoading ? (
+              <Spinner />
+            ) : nodeMetricsError ? (
+              <p style={{ color: 'var(--danger)', fontSize: 13 }}>{nodeMetricsError}</p>
+            ) : nodeMetrics && (
+              <div>
+                <p style={{ fontSize: 13, marginBottom: 8 }}>
+                  <strong>Completion: </strong>
+                  {nodeMetrics.completion.completedActions} / {nodeMetrics.completion.totalActions} actions completed
+                  {nodeMetrics.completion.totalActions > 0 && (
+                    <span className="muted"> ({Math.round(nodeMetrics.completion.completionRatio * 100)}%)</span>
+                  )}
+                </p>
+                <div style={{ marginBottom: 8 }}>
+                  <strong style={{ fontSize: 13 }}>Resources: </strong>
+                  {Object.keys(nodeMetrics.resourceCost.totalByResource).length === 0 ? (
+                    <span className="muted" style={{ fontSize: 13 }}>no allocations</span>
+                  ) : (
+                    <table style={{ fontSize: 13, width: '100%', marginTop: 4 }}>
+                      <tbody>
+                        {Object.entries(nodeMetrics.resourceCost.totalByResource).map(([res, qty]) => (
+                          <tr key={res}>
+                            <td style={{ color: 'var(--muted)', paddingRight: 8 }}>{res}</td>
+                            <td style={{ textAlign: 'right', fontWeight: 500 }}>{Number(qty)}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+                <p style={{ fontSize: 13, margin: 0 }}>
+                  <strong>Risk: </strong>
+                  <span className={`badge badge-risk-${nodeMetrics.risk.riskLevel}`}>{nodeMetrics.risk.riskLevel}</span>
+                  {' '}score {nodeMetrics.risk.riskScore}
+                  {(nodeMetrics.risk.suspendedActions > 0 || nodeMetrics.risk.abandonedActions > 0) && (
+                    <span className="muted"> ({nodeMetrics.risk.suspendedActions} suspended, {nodeMetrics.risk.abandonedActions} abandoned)</span>
+                  )}
+                </p>
+              </div>
+            )}
+          </div>
 
           {/* Add child form */}
           <div className="card">
@@ -202,6 +347,9 @@ export default function PlanDetail() {
 
       {showReport && (
         <ReportModal planId={id} onClose={() => setShowReport(false)} />
+      )}
+      {showMetrics && (
+        <MetricsModal planId={id} onClose={() => setShowMetrics(false)} />
       )}
     </div>
   );

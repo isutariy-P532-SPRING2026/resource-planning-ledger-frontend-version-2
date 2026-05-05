@@ -1,9 +1,9 @@
 import axios from 'axios';
 
-// Vite proxy forwards /api → http://localhost:8080
+const API_BASE = 'https://resource-planning-ledger-backend-version-5jku.onrender.com';
 
 const api = axios.create({
-  baseURL: import.meta.env.VITE_API_URL || 'http://localhost:8080/api'
+  baseURL: import.meta.env.VITE_API_URL || `${API_BASE}/api`
 });
 
 export default api;
@@ -12,8 +12,12 @@ export default api;
 export const listPlans        = ()          => api.get('/plans').then(r => r.data);
 export const getPlan          = (id)        => api.get(`/plans/${id}`).then(r => r.data);
 export const createPlan       = (body)      => api.post('/plans', body).then(r => r.data);
-export const getPlanReport    = (id)        => api.get(`/plans/${id}/report`).then(r => r.data);
+export const getPlanReport    = (id, status) =>
+  api.get(`/plans/${id}/report`, { params: status ? { status } : undefined }).then(r => r.data);
 export const addChildNode     = (id, body)  => api.post(`/plans/${id}/children`, body).then(r => r.data);
+export const getPlanMetrics   = (id)        => api.get(`/plans/${id}/metrics`).then(r => r.data);
+export const getPlanActions   = (id, status) =>
+  api.get(`/plans/${id}/actions`, { params: status ? { status } : undefined }).then(r => r.data);
 
 // ── Actions ──────────────────────────────────────────────────────────────────
 export const getAction        = (id)        => api.get(`/actions/${id}`).then(r => r.data);
@@ -21,8 +25,12 @@ export const implementAction  = (id, body)  => api.post(`/actions/${id}/implemen
 export const completeAction   = (id)        => api.post(`/actions/${id}/complete`, {}).then(r => r.data);
 export const suspendAction    = (id, body)  => api.post(`/actions/${id}/suspend`, body).then(r => r.data);
 export const resumeAction     = (id)        => api.post(`/actions/${id}/resume`, {}).then(r => r.data);
-export const abandonAction    = (id)        => api.post(`/actions/${id}/abandon`, {}).then(r => r.data);
-export const addAllocation    = (id, body)  => api.post(`/actions/${id}/allocations`, body).then(r => r.data);
+export const abandonAction     = (id)       => api.post(`/actions/${id}/abandon`, {}).then(r => r.data);
+export const submitForApproval = (id)       => api.post(`/actions/${id}/submit-for-approval`, {}).then(r => r.data);
+export const approveAction     = (id)       => api.post(`/actions/${id}/approve`, {}).then(r => r.data);
+export const rejectAction      = (id)       => api.post(`/actions/${id}/reject`, {}).then(r => r.data);
+export const reopenAction      = (id)       => api.post(`/actions/${id}/reopen`, {}).then(r => r.data);
+export const addAllocation     = (id, body) => api.post(`/actions/${id}/allocations`, body).then(r => r.data);
 
 // ── Accounts / Ledger ────────────────────────────────────────────────────────
 export const listAccounts     = ()                    => api.get('/accounts').then(r => r.data);

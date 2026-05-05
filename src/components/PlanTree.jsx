@@ -78,7 +78,7 @@ function TreeNode({ node, depth = 0, selectedId, onSelect }) {
 
       {isComposite && open && node.children?.length === 0 && (
         <div style={{ marginLeft: 32, padding: '4px 0', color: 'var(--muted)', fontSize: 12 }}>
-          (empty plan)
+          {node._pruned ? '…' : '(empty plan)'}
         </div>
       )}
     </div>

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-  getAction, implementAction, completeAction,
+  getAction, completeAction,
   suspendAction, resumeAction, abandonAction,
+  submitForApproval, approveAction, rejectAction, reopenAction,
   addAllocation, listResourceTypes,
 } from '../api.js';
 import { useToast } from '../context/ToastContext.jsx';
@@ -16,58 +17,6 @@ function err(e) {
   if (d?.message) return d.message;
   if (d?.error)   return d.error;
   return e?.message || 'An unexpected error occurred';
-}
-
-/* ── Implement modal ────────────────────────────────────────────────────────── */
-function ImplementModal({ actionId, onClose, onDone }) {
-  const [party,    setParty]    = useState('');
-  const [location, setLocation] = useState('');
-  const [start,    setStart]    = useState('');
-  const [saving,   setSaving]   = useState(false);
-  const toast = useToast();
-
-  async function submit(e) {
-    e.preventDefault();
-    setSaving(true);
-    try {
-      const a = await implementAction(actionId, {
-        actualParty:    party    || null,
-        actualLocation: location || null,
-        actualStart:    start    ? new Date(start).toISOString() : null,
-      });
-      toast('Action implemented', 'success');
-      onDone(a);
-    } catch (ex) { toast(err(ex), 'error'); }
-    finally { setSaving(false); }
-  }
-
-  return (
-    <div className="modal-overlay" onClick={onClose}>
-      <div className="modal" onClick={e => e.stopPropagation()}>
-        <h2>Implement Action</h2>
-        <form onSubmit={submit}>
-          <div className="form-row">
-            <label>Actual Party</label>
-            <input value={party} onChange={e => setParty(e.target.value)} placeholder="Person / team responsible" />
-          </div>
-          <div className="form-row">
-            <label>Actual Location</label>
-            <input value={location} onChange={e => setLocation(e.target.value)} placeholder="Execution site" />
-          </div>
-          <div className="form-row">
-            <label>Actual Start (leave blank for now)</label>
-            <input type="datetime-local" value={start} onChange={e => setStart(e.target.value)} />
-          </div>
-          <div className="modal-actions">
-            <button type="button" className="btn btn-ghost" onClick={onClose}>Cancel</button>
-            <button type="submit" className="btn btn-implement" disabled={saving}>
-              {saving ? 'Starting…' : 'Implement'}
-            </button>
-          </div>
-        </form>
-      </div>
-    </div>
-  );
 }
 
 /* ── Suspend modal ──────────────────────────────────────────────────────────── */
@@ -219,18 +168,24 @@ function AddAllocationModal({ actionId, onClose, onAdded }) {
 
 /* ── Button style map ────────────────────────────────────────────────────────── */
 const BTN_CLS = {
-  implement: 'btn-implement',
-  complete:  'btn-complete',
-  suspend:   'btn-suspend',
-  resume:    'btn-resume',
-  abandon:   'btn-abandon',
+  'submit-for-approval': 'btn-submit-approval',
+  approve:  'btn-approve',
+  reject:   'btn-reject',
+  reopen:   'btn-reopen',
+  complete: 'btn-complete',
+  suspend:  'btn-suspend',
+  resume:   'btn-resume',
+  abandon:  'btn-abandon',
 };
 const BTN_LABEL = {
-  implement: '▶ Implement',
-  complete:  '✓ Complete',
-  suspend:   '⏸ Suspend',
-  resume:    '▶ Resume',
-  abandon:   '✕ Abandon',
+  'submit-for-approval': '→ Submit for Approval',
+  approve:  '✓ Approve',
+  reject:   '✕ Reject',
+  reopen:   '↩ Reopen',
+  complete: '✓ Complete',
+  suspend:  '⏸ Suspend',
+  resume:   '▶ Resume',
+  abandon:  '✕ Abandon',
 };
 
 /* ── Main page ───────────────────────────────────────────────────────────────── */
@@ -241,7 +196,7 @@ export default function ActionDetail() {
 
   const [action,  setAction]  = useState(null);
   const [loading, setLoading] = useState(true);
-  const [modal,   setModal]   = useState(null); // 'implement'|'suspend'|'alloc'|'abandon'|null
+  const [modal,   setModal]   = useState(null); // 'suspend'|'alloc'|'abandon'|null
 
   function reload() {
     setLoading(true);
@@ -262,11 +217,14 @@ export default function ActionDetail() {
   }
 
   function handleTransition(event) {
-    if (event === 'implement') return setModal('implement');
-    if (event === 'suspend')   return setModal('suspend');
-    if (event === 'abandon')   return setModal('abandon');
-    if (event === 'complete')  return fireSimple(() => completeAction(id), 'Action completed');
-    if (event === 'resume')    return fireSimple(() => resumeAction(id),   'Action resumed');
+    if (event === 'suspend')             return setModal('suspend');
+    if (event === 'abandon')             return setModal('abandon');
+    if (event === 'complete')            return fireSimple(() => completeAction(id),    'Action completed');
+    if (event === 'resume')              return fireSimple(() => resumeAction(id),      'Action resumed');
+    if (event === 'submit-for-approval') return fireSimple(() => submitForApproval(id), 'Submitted for approval');
+    if (event === 'approve')             return fireSimple(() => approveAction(id),     'Action approved');
+    if (event === 'reject')              return fireSimple(() => rejectAction(id),      'Action rejected');
+    if (event === 'reopen')              return fireSimple(() => reopenAction(id),      'Action reopened');
   }
 
   if (loading) return <Spinner />;
@@ -418,10 +376,6 @@ export default function ActionDetail() {
       </div>
 
       {/* Modals */}
-      {modal === 'implement' && (
-        <ImplementModal actionId={id} onClose={() => setModal(null)}
-          onDone={a => { setAction(a); setModal(null); }} />
-      )}
       {modal === 'suspend' && (
         <SuspendModal actionId={id} onClose={() => setModal(null)}
           onDone={a => { setAction(a); setModal(null); }} />

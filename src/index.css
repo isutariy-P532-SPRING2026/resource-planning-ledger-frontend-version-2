@@ -224,11 +224,16 @@ tr:hover td { background: #fafafa; }
 .confirm-modal p { color: var(--muted); font-size: 13px; margin-top: 6px; }
 
 /* ── Status badge (by name) ──────────────────────────────────────────────── */
-.badge-PROPOSED    { background: #f3f4f6; color: #374151; }
-.badge-IN_PROGRESS { background: #dbeafe; color: #1d4ed8; }
-.badge-SUSPENDED   { background: #fef9c3; color: #92400e; }
-.badge-COMPLETED   { background: #dcfce7; color: #15803d; }
-.badge-ABANDONED   { background: #fee2e2; color: #991b1b; }
+.badge-risk-LOW    { background: #dcfce7; color: #15803d; }
+.badge-risk-MEDIUM { background: #fef9c3; color: #92400e; }
+.badge-risk-HIGH   { background: #fee2e2; color: #991b1b; }
+.badge-PROPOSED          { background: #f3f4f6; color: #374151; }
+.badge-PENDING_APPROVAL  { background: #ede9fe; color: #5b21b6; }
+.badge-IN_PROGRESS       { background: #dbeafe; color: #1d4ed8; }
+.badge-SUSPENDED         { background: #fef9c3; color: #92400e; }
+.badge-COMPLETED         { background: #dcfce7; color: #15803d; }
+.badge-REOPENED          { background: #e0f2fe; color: #0369a1; }
+.badge-ABANDONED         { background: #fee2e2; color: #991b1b; }
 
 /* ── Form inline errors ──────────────────────────────────────────────────── */
 .field-error { font-size: 11px; color: var(--danger); margin-top: 3px; }
@@ -246,8 +251,14 @@ th.sortable.active .sort-arrow { opacity: 1; color: var(--primary); }
 
 /* ── Transition action buttons ───────────────────────────────────────────── */
 .transition-btns { display: flex; gap: 8px; flex-wrap: wrap; margin: 12px 0; }
-.btn-implement { background: #2563eb; color: #fff; border-color: #2563eb; }
-.btn-implement:hover:not(:disabled) { background: #1d4ed8; }
+.btn-submit-approval { background: #7c3aed; color: #fff; border-color: #7c3aed; }
+.btn-submit-approval:hover:not(:disabled) { background: #6d28d9; }
+.btn-approve   { background: #16a34a; color: #fff; border-color: #16a34a; }
+.btn-approve:hover:not(:disabled)   { background: #15803d; }
+.btn-reject    { background: #dc2626; color: #fff; border-color: #dc2626; }
+.btn-reject:hover:not(:disabled)    { background: #b91c1c; }
+.btn-reopen    { background: #0891b2; color: #fff; border-color: #0891b2; }
+.btn-reopen:hover:not(:disabled)    { background: #0e7490; }
 .btn-complete  { background: #16a34a; color: #fff; border-color: #16a34a; }
 .btn-complete:hover:not(:disabled)  { background: #15803d; }
 .btn-suspend   { background: #d97706; color: #fff; border-color: #d97706; }
