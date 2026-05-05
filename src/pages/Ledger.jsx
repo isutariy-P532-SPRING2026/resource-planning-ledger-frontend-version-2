@@ -28,6 +28,7 @@ export default function Ledger() {
   const [loadingEnt, setLoadingEnt] = useState(false);
   const [sortCol,    setSortCol]    = useState('bookedAt');
   const [sortDir,    setSortDir]    = useState('desc');
+  const [kindFilter, setKindFilter] = useState('all');
   const toast = useToast();
 
   useEffect(() => {
@@ -66,14 +67,27 @@ export default function Ledger() {
   }, [entries, sortCol, sortDir]);
 
   const selectedAcc = accounts.find(a => a.id === selectedId);
-  const poolAccounts  = accounts.filter(a => a.kind === 'POOL');
-  const usageAccounts = accounts.filter(a => a.kind === 'USAGE');
+  const visibleAccounts = kindFilter === 'all'
+    ? accounts
+    : accounts.filter(a => a.resourceKind === kindFilter);
+  const poolAccounts  = visibleAccounts.filter(a => a.kind === 'POOL');
+  const usageAccounts = visibleAccounts.filter(a => a.kind === 'USAGE');
 
   if (loadingAcc) return <Spinner />;
 
   return (
     <div>
       <h1>Ledger</h1>
+
+      <div style={{ display: 'flex', gap: 8, marginBottom: 16 }}>
+        {[['all', 'Show all'], ['CONSUMABLE', 'Consumable only'], ['ASSET', 'Asset only']].map(([val, label]) => (
+          <button key={val}
+            className={`btn btn-sm ${kindFilter === val ? 'btn-primary' : 'btn-ghost'}`}
+            onClick={() => setKindFilter(val)}>
+            {label}
+          </button>
+        ))}
+      </div>
 
       <div className="grid-2">
         {/* Account list */}
