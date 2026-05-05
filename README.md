@@ -29,6 +29,7 @@ React + Vite single-page application for the Resource Planning Ledger system.
 ## Local Development
 
 ### Prerequisites
+
 - Node.js 18+
 - Backend running at `http://localhost:8080` (see [backend README](../README.md))
 
@@ -63,10 +64,10 @@ Serve `dist/` with any static host (Nginx, Vercel, Render, etc.) and set `VITE_A
 |---|---|---|
 | `/` | Dashboard | Pool account balances with alert indicators, plan status summary |
 | `/plans` | Plans | List all plans, create plan from scratch or from a protocol |
-| `/plans/:id` | Plan Detail | Collapsible plan tree, node selection, add child nodes |
-| `/plans/:id/report` | Report | Depth-first traversal report with resource allocations |
-| `/actions/:id` | Action Detail | State machine transitions, resource allocation CRUD, execution diff |
-| `/ledger` | Ledger | Account list with balances, drill-down to ledger entries per account |
+| `/plans/:id` | Plan Detail | Depth-slider tree, node metrics panel, add child nodes, plan metrics modal |
+| `/plans/:id/report` | Report | Depth-first traversal report with status filter and resource allocations |
+| `/actions/:id` | Action Detail | Full approval workflow transitions, resource allocation CRUD, execution diff |
+| `/ledger` | Ledger | Consumable/Asset toggle, account balances, drill-down to ledger entries |
 | `/protocols` | Protocols | Protocol list, create/edit/delete protocols with steps |
 | `/resource-types` | Resource Types | Resource type list, create/edit/delete, link to pool account |
 | `/audit-log` | Audit Log | Chronological audit event log with transaction detail |
@@ -76,23 +77,42 @@ Serve `dist/` with any static host (Nginx, Vercel, Render, etc.) and set `VITE_A
 ## Key Features
 
 **Plans & Tree**
+
 - Create plans from scratch or by instantiating a protocol template
 - Sub-protocols recursively expand into nested sub-plans
+- Depth slider (1–10) prunes the displayed tree client-side with no extra API calls — full tree is cached in memory on first load
 - Click any plan node to select it; use "Add Node" to add actions or sub-plans as children
 - Plan status is derived from its children's states
 
+**Plan Metrics**
+
+- `📊 Metrics` button on Plan Detail opens a modal with completion ratio, resource cost, and risk score
+- Node Metrics panel on the right: select any PLAN node to see its subtree metrics live
+- Metrics computed via three Visitor pattern classes (CompletionRatioVisitor, ResourceCostVisitor, RiskScoreVisitor) traversed by a DepthFirstPlanIterator
+- Risk levels: LOW / MEDIUM / HIGH based on abandoned, suspended, and unstarted action counts
+
 **State Machine (Actions)**
+
+- Full approval workflow: PROPOSED → IN_PROGRESS → PENDING_APPROVAL → COMPLETED / REJECTED → REOPENED
 - Visual state transition buttons — only legal transitions shown per current state
-- Implement → suspend → resume → complete workflow
-- Resume correctly targets IN_PROGRESS (if already implemented) or PROPOSED (if not)
+- `Submit for Approval`, `Approve`, `Reject`, `Reopen` buttons wired to backend approval endpoints
+- Suspend modal requires a reason; Abandon requires confirmation
+- Status badges for all states including PENDING_APPROVAL and REOPENED
+
+**Report Page**
+
+- Status filter dropdown: show all actions or filter by a specific status (PROPOSED, IN_PROGRESS, SUSPENDED, COMPLETED, ABANDONED, PENDING_APPROVAL, REOPENED)
+- Depth-first traversal report with resource allocation summaries per action
 
 **Ledger**
-- Pool accounts start at zero; resource type creation auto-creates a paired pool account
-- Each action completion posts a double-entry transaction (withdrawal + deposit)
-- Negative balance shown in red with indicator dot
-- Click a pool account name in Resource Types to jump directly to its ledger entries
+
+- Three-option resource kind toggle: Show all / Consumable only / Asset only
+- Pool and Usage accounts grouped separately
+- Sortable columns (Booked At, Charged At, Amount)
+- Negative balances shown in red with indicator dot
 
 **Audit Log**
+
 - `TRANSACTION_POSTED` events show both debit and credit sides with sum-to-zero verification
 - Color-coded: debits in red, credits in green
 - `OVER_CONSUMPTION_ALERT` events highlighted in amber
@@ -104,23 +124,23 @@ Serve `dist/` with any static host (Nginx, Vercel, Render, etc.) and set `VITE_A
 ```
 frontend/
 ├── src/
-│   ├── api.js               # All Axios API calls
+│   ├── api.js               # All Axios API calls (centralized base URL)
 │   ├── App.jsx              # Router setup
 │   ├── main.jsx             # Entry point
 │   ├── context/
 │   │   └── ToastContext.jsx  # Global toast notifications
 │   ├── components/
-│   │   ├── PlanTree.jsx     # Recursive collapsible tree
-│   │   ├── StatusBadge.jsx  # Colored status chip
+│   │   ├── PlanTree.jsx     # Recursive collapsible tree with pruned-node indicator
+│   │   ├── StatusBadge.jsx  # Colored status chip (all ActionStatus values)
+│   │   ├── ConfirmModal.jsx # Generic confirmation dialog
 │   │   └── Spinner.jsx      # Loading indicator
 │   └── pages/
 │       ├── Dashboard.jsx
 │       ├── Plans.jsx
-│       ├── PlanDetail.jsx
-│       ├── ReportPage.jsx
-│       ├── ActionDetail.jsx
-│       ├── Ledger.jsx
-│       ├── LedgerView.jsx
+│       ├── PlanDetail.jsx   # Depth slider, node metrics, plan metrics modal
+│       ├── ReportPage.jsx   # Status filter dropdown
+│       ├── ActionDetail.jsx # Full approval workflow, suspend/abandon modals
+│       ├── Ledger.jsx       # Consumable/Asset toggle, sortable entries
 │       ├── Protocols.jsx
 │       ├── ResourceTypes.jsx
 │       └── AuditLog.jsx
@@ -134,5 +154,5 @@ frontend/
 1. Create a **Static Site** service pointing to this repo.
 2. Set **Build Command**: `npm install && npm run build`
 3. Set **Publish Directory**: `dist`
-4. Add environment variable `VITE_API_URL` = `https://resource-planning-ledger-backend-version-5jku.onrender.com/api`
+4. Add environment variable `VITE_API_URL` = `https://resource-planning-ledger-backend-version-w90h.onrender.com/api`
 5. Add a rewrite rule: `/* → /index.html` (status 200) for React Router client-side routing.
